@@ -42,7 +42,32 @@ while file_search == True:
     else:
         print('Dataset file not found.')
 
+
+mouse_search = True
 mouse_list = [i for i in list(fd.keys()) if i != 'Activity log'] #generate list of mice in dataset
+
+while mouse_search  == True:
+    
+    all_mice = input('Enter mouse number (a:all mice, ls:list mice): ')
+
+    if all_mice == 'a':
+
+        mouse_search = False
+
+    elif all_mice == 'ls':
+
+        print(mouse_list)
+
+    elif all_mice in mouse_list:
+
+        mouse_list = []
+        mouse_list.append(all_mice)
+        mouse_search = False
+
+    else:
+
+        print('Not recognized')
+
 
 lick_rates = np.empty(len(mouse_list), dtype=np.ndarray) #will store a_lick rates for each mouse and each block
 incorr_lick_rates = np.empty(len(mouse_list), dtype=np.ndarray) #will store lick rates on the incorrect port
@@ -151,14 +176,10 @@ for mouse in range(len(mouse_list)):
         lick_trials[mouse][date] = (int(np.nansum(a_licking))/total_trials) * 100
         incorr_lick_trials[mouse][date] = (int(np.nansum(incorr_a_licking))/total_trials) * 100
         diff_lick_trials[mouse][date] = lick_trials[mouse][date] - incorr_lick_trials[mouse][date]
-            
-    print(lick_trials[mouse])
     
     axs[0].plot(lick_trials[mouse], color='steelblue', alpha=0.3, lw=1.5, label = mouse_list[mouse])
     axs[0].plot(incorr_lick_trials[mouse], color='orange', alpha=0.3, lw=1.5, label = mouse_list[mouse])
     axs[0].plot(diff_lick_trials[mouse], color='red', alpha=0.3, lw=1.5, label = mouse_list[mouse])
-
-    print(lick_rates[mouse])
     
     axs[1].plot(lick_rates[mouse], color='steelblue', alpha=0.3, lw=1.5,  label = mouse_list[mouse])
     axs[1].plot(incorr_lick_rates[mouse], color='red', alpha=0.3, lw=1.5,  label = mouse_list[mouse])
