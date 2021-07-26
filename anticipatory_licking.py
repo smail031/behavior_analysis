@@ -177,13 +177,13 @@ for mouse in range(len(mouse_list)):
         incorr_lick_trials[mouse][date] = (int(np.nansum(incorr_a_licking))/total_trials) * 100
         diff_lick_trials[mouse][date] = lick_trials[mouse][date] - incorr_lick_trials[mouse][date]
     
-    axs[0].plot(lick_trials[mouse], color='steelblue', alpha=0.3, lw=1.5, label = mouse_list[mouse])
-    axs[0].plot(incorr_lick_trials[mouse], color='orange', alpha=0.3, lw=1.5, label = mouse_list[mouse])
-    axs[0].plot(diff_lick_trials[mouse], color='red', alpha=0.3, lw=1.5, label = mouse_list[mouse])
+    axs[0].plot(lick_trials[mouse], color='green', alpha=0.3, lw=1.5)
+    axs[0].plot(incorr_lick_trials[mouse], color='red', alpha=0.3, lw=1.5)
+    axs[0].plot(diff_lick_trials[mouse], color='steelblue', alpha=0.3, lw=1.5)
     
-    axs[1].plot(lick_rates[mouse], color='steelblue', alpha=0.3, lw=1.5,  label = mouse_list[mouse])
-    axs[1].plot(incorr_lick_rates[mouse], color='red', alpha=0.3, lw=1.5,  label = mouse_list[mouse])
-    axs[1].plot(diff_lick_rates[mouse], color='green', alpha=0.3, lw=1.5, label = mouse_list[mouse])
+    axs[1].plot(lick_rates[mouse], color='green', alpha=0.3, lw=1.5)
+    axs[1].plot(incorr_lick_rates[mouse], color='red', alpha=0.3, lw=1.5)
+    axs[1].plot(diff_lick_rates[mouse], color='steelblue', alpha=0.3, lw=1.5)
 
 #----------------- Calculate averages across mice ------------------------
 
@@ -229,26 +229,26 @@ avg_lick_rates = np.nanmean(lick_rates_array, axis=0)
 avg_incorr_lick_rates = np.nanmean(incorr_lick_rates_array, axis=0)
 avg_diff_lick_rates = np.nanmean(diff_lick_rates_array, axis=0)
 
-axs[0].plot(avg_lick_trials, color='steelblue', lw=2.5, label='Correct port')
+axs[0].plot(avg_lick_trials, color='green', lw=2.5, label='Correct port')
 axs[0].plot(avg_incorr_lick_trials, color='red', lw=2.5,label='Incorrect port')
-axs[0].plot(avg_diff_lick_trials, color='green', lw=2.5, label='Correct - Incorrect')
+axs[0].plot(avg_diff_lick_trials, color='steelblue', lw=2.5, label='Correct - Incorrect')
 
-axs[1].plot(avg_lick_rates, color='steelblue', lw=2.5, label='Correct port')
+axs[1].plot(avg_lick_rates, color='green', lw=2.5, label='Correct port')
 axs[1].plot(avg_incorr_lick_rates, color='red', lw=2.5, label='Incorrect port')
-axs[1].plot(avg_diff_lick_rates, color='green', lw=2.5, label='Correct - Incorrect')
+axs[1].plot(avg_diff_lick_rates, color='steelblue', lw=2.5, label='Correct - Incorrect')
 
 axs[0].set_ylabel('% Trials with anticipatory licking')
 axs[0].set_xlabel('Training Day')
 axs[0].set_ylim(0,100)
 axs[0].spines['top'].set_visible(False)
 axs[0].spines['right'].set_visible(False)
-#axs[0].legend()
+axs[0].legend()
 
 axs[1].set_ylabel('Mean anticipatory lick rate (Hz)')
 axs[1].set_xlabel('Training Day')
 axs[1].set_ylim(0,None)
 axs[1].spines['top'].set_visible(False)
 axs[1].spines['right'].set_visible(False)
-#axs[1].legend()
+axs[1].legend()
 
 plt.show()
