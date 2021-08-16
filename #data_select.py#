@@ -126,7 +126,7 @@ while choose_mice == True:
 
                     print(f'{data_repo}/{mouse}/{exp}/')
                     print(os.listdir(f'{data_repo}/{mouse}/{exp}/'))
-                    last_exp = sorted(os.listdir(f'{data_repo}/{mouse}/{exp}/'))[-1]
+                    last_exp = sorted(os.listdir(f'{data_jrepo}/{mouse}/{exp}/'))[-1]
 
                     with h5py.File(f'{data_repo}/{mouse}/{exp}/{last_exp}', 'r') as w:
 
