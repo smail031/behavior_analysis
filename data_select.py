@@ -109,7 +109,7 @@ while choose_mice == True:
             date = input('Enter date  yyyy-mm-dd (q:quit, h:help): ')
 
             if date == 'h':
-                print('q:quit, ls:list all dates, lsf:list dates in file, rm:delete mode, rg:range mode')
+                print('q:quit, ls:list all dates, lsf:list dates in file, lsp:list dates w/ protocol rm:delete mode, rg:range mode')
 
             elif date == 'q':
                 choose_dates= False
@@ -123,17 +123,17 @@ while choose_mice == True:
             elif date == 'lsp':
 
                 for exp in dates:
-
-                    print(f'{data_repo}/{mouse}/{exp}/')
-                    print(os.listdir(f'{data_repo}/{mouse}/{exp}/'))
+                    
                     last_exp = sorted(os.listdir(f'{data_repo}/{mouse}/{exp}/'))[-1]
 
                     with h5py.File(f'{data_repo}/{mouse}/{exp}/{last_exp}', 'r') as w:
 
-                        protocol_name = w.attrs['protocol_name']
-                        print(f'{date}: {protocol_name}')
+                        if 'protocol_name' in w.attrs:
+                            protocol_name = w.attrs['protocol_name']
+                            print(f'{exp}: {protocol_name}')
 
-                    
+                        else:
+                            print(exp)  
 
             elif date == 'rm':
 
