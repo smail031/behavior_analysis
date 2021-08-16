@@ -37,6 +37,31 @@ while file_search == True:
 
 mouse_list = [i for i in list(fd.keys()) if i != 'Activity log'] #generate list of mice in dataset
 
+mouse_search = True
+
+while mouse_search  == True: #ask user to choose a mouse from the dataset (or use all)
+    
+    all_mice = input('Enter mouse number (a:all mice, ls:list mice): ')
+
+    if all_mice == 'a': #if user wants all mice, mouse_list stays the same
+
+        mouse_search = False
+
+    elif all_mice == 'ls': #will list all available mice for the user
+
+        print(mouse_list)
+
+    elif all_mice in mouse_list:
+
+        #if user inputs a ms, mouse_list will only contain that ms
+        mouse_list = []
+        mouse_list.append(all_mice)
+        mouse_search = False
+
+    else:
+
+        print('Not recognized')
+
 performance = np.empty(len(mouse_list), dtype=np.ndarray) #will store correct (1) and incorrect (0) trials
 
 conv_performance = np.empty(len(mouse_list), dtype=np.ndarray) #will store correct (1) and incorrect (0) trials
