@@ -142,7 +142,7 @@ class Experiment():
         for lick in range(len(lick_index)):
             lick_timestamps[lick] = lickport_timestamps[lick_index[lick]]
             
-            return lick_timestamps
+        return lick_timestamps
 
 
     def get_anticipatory_licking(self):
@@ -452,9 +452,9 @@ class DataSet():
     def get_post_reversal_performance(self, n_trials):
         '''
         '''
-        reversal_performance = np.empty(len(self.mouse_list))
+        reversal_performance = np.empty(len(self.mouse_list), dtype=np.ndarray)
 
-        for mouse in range(len(self.mouse_list)):
+        for mouse in range(len(self.mouse_objects)):
             reversal_performance[mouse] = (
                 self.mouse_objects[mouse].get_post_reversal_performance(n_trials))
 
@@ -512,6 +512,8 @@ def as_vector(nested_vectors):
     return output_vector
 
 def dataset_search():
+    '''
+    '''
 
     datasets = []
     dataset_names = []
