@@ -11,6 +11,8 @@ fig, ax = plt.subplots(
 
 datasets, dataset_names = core.dataset_search()
 
+dset_colors = ['pink', 'blue']
+
 for dset in range(len(datasets)):
     postrev_performance_nested = (
         datasets[dset].get_post_reversal_performance(1000))
@@ -23,7 +25,7 @@ for dset in range(len(datasets)):
             mean_performance = np.mean(performance_array, axis=0)
             conv_mean_performance = gaussian_filter1d(mean_performance, sigma=15)
             mouse_mean[mouse] = conv_mean_performance
-            ax.plot(conv_mean_performance, color='grey',
+            ax.plot(conv_mean_performance, color=dset_colors[dset],
                     label=datasets[dset].mouse_list[mouse], lw=0.75)
 
         else:
@@ -32,7 +34,8 @@ for dset in range(len(datasets)):
     population_array = core.as_array(mouse_mean)
     population_mean = np.nanmean(population_array, axis=0)
 
-    ax.plot(population_mean, color='red', lw=2, label='Population mean')
+    ax.plot(population_mean, color=dset_colors[dset],
+            lw=2, label='Population mean')
     
 
 ax.spines['top'].set_visible(False)
