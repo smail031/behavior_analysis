@@ -84,8 +84,6 @@ for trial in range(num_trials):
                         [trial-0.5, trial-0.5], [trial+0.5, trial+0.5],
                         edgecolor='black',lw=0.5, facecolor='red', alpha=0.3)
 
-
-
 ax.set_ylim(-0.5,None)
 ax.set_xlim(0,None)
 ax.spines['top'].set_visible(False)
