@@ -2,7 +2,8 @@ import h5py
 import numpy as np
 import os
 
-data_repo_path = '/Volumes/GoogleDrive/Shared drives/Beique Lab/Data/Raspberry PI Data/Sebastien/Dual_Lickport/Mice/'
+data_repo_path = ('/Volumes/GoogleDrive/Shared drives/Beique Lab/'
+                  'Data/Raspberry PI Data/Sebastien/Dual_Lickport/Mice/')
 dataset_repo_path = './datasets/'
 
 class Experiment():
@@ -134,7 +135,7 @@ class Experiment():
             An array of timestamps for each detected lick.
         '''
         
-        lick_derivative = np.diff(lick_voltage)
+        lick_derivative = np.diff(lickport_voltage)
         lick_derivative = np.append(lick_derivative, 0)
         lick_index = np.argwhere(lick_derivative > 0).flatten()
         lick_timestamps = np.empty(len(lick_index), dtype=float)
@@ -147,23 +148,51 @@ class Experiment():
 
     def get_anticipatory_licking(self):
         '''
+        For classical conditioning experiments. For trials in which the trace
+        period is >250ms, calculates the proportion of trials in which there
+        is any anticipatory licking on the correct and incorrect ports. Also
+        calculates mean anticipatory lick rates (in Hz) for correct and
+        incorrect ports, not including trials in which there is no anticipatory
+        licking on that port.
+
+        Anticipatory licking is defined as any licking contact that occurrs
+        between the end of the sample tone and the water delivery.
+        
+        Returns list containing:
+        -------------------------
+        [0]corr_ant_lick_trials: 1D numpy array (float)
+            Numpy vector indicating, for each trial, whether(1) or not(0) there
+            was any anticipatory licking on the correct port, or whether the 
+            trace period was too short (np.nan).
+        [1]incorr_ant_lick_trials: 1D numpy array (float)
+            Numpy vector indicating, for each trial, whether(1) or not(0) there
+            was any anticipatory licking on the incorrect port, or whether the 
+            trace period was too short (np.nan).
+        [2]corr_ant_lick_rate: 1D numpy array (float)
+            Numpy vector indicating the rate (in Hz) of anticipatory licking on
+            the correct port for each trial. If the trace period is too short,
+            the value is set to np.nan.
+        [3]incorr_ant_lick_rate: 1D numpy array (float)
+            Numpy vector indicating the rate (in Hz) of anticipatory licking on
+            the incorrect port for each trial. If the trace period is too short,
+            the value is set to np.nan.
         '''
 
-        self.corr_ant_lick_trials = np.empty(len(self.num_trials), dtype=bool)
-        self.corr_ant_lick_trials.fill(np.nan)
-        self.incorr_ant_lick_trials = np.empty(len(self.num_trials), dtype=bool)
-        self.incorr_ant_lick_trials.fill(np.nan)
-        self.corr_ant_lick_rate = np.empty(len(self.num_trials), dtype=float)
-        self.corr_ant_lick_rate.fill(np.nan)
-        self.incorr_ant_lick_rate = np.empty(len(self.num_trials), dtype=float)
-        self.incorr_ant_lick_rate.fill(np.nan)
+        corr_ant_lick_trials = np.empty(self.num_trials)
+        corr_ant_lick_trials.fill(np.nan)
+        incorr_ant_lick_trials = np.empty(self.num_trials)
+        incorr_ant_lick_trials.fill(np.nan)
+        corr_ant_lick_rate = np.empty(self.num_trials, dtype=float)
+        corr_ant_lick_rate.fill(np.nan)
+        incorr_ant_lick_rate = np.empty(self.num_trials, dtype=float)
+        incorr_ant_lick_rate.fill(np.nan)
 
         for trial in range(self.num_trials):
 
             if 'L' in str(self.data['sample_tone']['type'][trial]):
                     
                 correct_lick_group = self.data['lick_l']
-                incorr_lick_group = self.data['lick_r']
+                incorrect_lick_group = self.data['lick_r']
                 reward_time = self.data['rew_l']['t'][trial]
                     
             elif 'R' in str(self.data['sample_tone']['type'][trial]):
@@ -182,37 +211,54 @@ class Experiment():
             sample_tone_end = self.data['sample_tone']['end'][trial]
             trace_period = reward_time - sample_tone_end
 
+            # If trace period is too short, there is not enough time
+            # for the mouse to lick in anticipation.
             if trace_period > 250:
-                # If trace period is too short, there is not enough time
-                # for the mouse to lick in anticipation.
                 corr_ant_licks = correct_lick_timestamps[
                     (correct_lick_timestamps > sample_tone_end)
                     & (correct_lick_timestamps < reward_time)]
                 incorr_ant_licks = incorrect_lick_timestamps[
                     (incorrect_lick_timestamps > sample_tone_end)
                     & (incorrect_lick_timestamps < reward_time)]
-                
-                self.corr_ant_lick_trials[trial] = len(corr_ant_licks) > 0
-                self.incorr_ant_lick_trials[trial] = len(incorr_ant_licks) > 0
 
-                self.corr_ant_lick_rate[trial] = (
+                corr_ant_lick_trials[trial] = (len(corr_ant_licks) > 0)
+                incorr_ant_lick_trials[trial] = (len(incorr_ant_licks) > 0)
+
+                corr_ant_lick_rate[trial] = (
                     len(corr_ant_licks)
                     / (trace_period/1000)) # Divide by 1000 to get rate in Hz
-                self.incorr_ant_lick_rate[trial] = (
+                incorr_ant_lick_rate[trial] = (
                     len(incorr_ant_licks)
                     / (trace_period/1000))
 
-    def get_performance(self):                       
+        output_list =  [corr_ant_lick_trials,
+                        incorr_ant_lick_trials,
+                        corr_ant_lick_rate,
+                        incorr_ant_lick_rate]
         
-        self.performance = np.zeros(self.num_trials, dtype=int)
+        return output_list
+            
+
+    def get_performance(self):
+        '''
+        Returns a 1D numpy array indicating, for each trial, whether the mouse
+        responded correctly(1) or incorrectly(0), or failed to respond(0)
+
+        Returns:
+        --------
+        performance: np.array, dtype=int
+            Contains the performance of the mouse on each trial.
+        '''
+        
+        performance = np.zeros(self.num_trials, dtype=int)
 
         for trial in range(self.num_trials):
             if (self.data['response'][trial]
                 == self.data['sample_tone']['type'][trial]):
                 # If true, answer was correct.
-                self.performance[trial] = 1
+                performance[trial] = 1
 
-        return self.performance
+        return performance
 
                 
 class Mouse():
@@ -239,9 +285,6 @@ class Mouse():
     self.get_weights():
         Returns daily weights(g) for this mouse for each experiment in the 
         dataset.
-    self.get_performance():
-        Returns nested 1D numpy arrays indicating, for each trial, for each
-        experiment, whether the mouse answered correctly (1) or not (0).
     self.get_performance_experiment():
         Returns the fraction of correct trials for each experiment in the
         dataset for this mouse.
@@ -259,6 +302,14 @@ class Mouse():
 
     def get_experiments(self, date_list):
         '''
+        Instantiates an object of class Experiment for each experiment in
+        the dataset for this mouse. Returns a list of these objects. This
+        method is called in __init__.
+
+        Returns:
+        --------
+        experiments: list
+            A list of objects from the Experiments class.
         '''
         experiments = []
 
@@ -274,48 +325,98 @@ class Mouse():
 
     def get_weights(self):
         '''
+        Returns a 1D array containing the weight (in grams) of the mouse
+        recorded prior to each experiment in this dataset.
+        
+        Returns:
+        weights: 1D numpy array (float)
+            A vector containing the weight of the mouse for each experiment.
         '''
-        self.weights = np.empty(len(self.experiments), dtype=float)
+        
+        weights = np.empty(len(self.experiments), dtype=float)
 
         for exp in range(len(self.experiments)):
-            self.weights[exp] = self.experiments[exp].get_weight()
+            weights[exp] = self.experiments[exp].get_weight()
 
-        return self.weights
+        return weights
 
-    def get_performance(self):
+    def get_performance_experiment(self, pre_switch=False, switch_type='r'):
         '''
-        '''
-        performance = np.empty(len(self.experiments), dtype=np.ndarray)
+        Returns a 1D array containing, for each experiment for this mouse, the
+        fraction of correctly answered trials. Can ignore trials after either a
+        reversal or a set shift.
+        
+        Arguments: 
+        ----------
+        pre_switch: bool, default = False
+            Indicates whether trials after a rule switch (reversal or set shift)
+            should be ignored (True) or not (False).
+        switch_type: str, default = 'r'
+            If pre_switch is True, indicates whether to look for a 
+            reversal(r; relevant dimension stays the same) or a set shift
+            (s; relevant dimension changes). This argument is passed to
+            Experiment.get_rule_switch.
 
-        for exp in range(len(self.experiments)):
-            performance[exp] = self.experiments[exp].get_performance()
-
-        return performance
-
-    def get_performance_experiment(self):
+        Returns:
+        --------
+        performance_experiment: np.array, dtype=float
+            Indicates the fraction of correct trials for each experiment.
+        
         '''
-        '''
-        performance = self.get_performance()
-        self.performance_experiment = np.empty(
-            len(self.experiments), dtype=float)
+
+        performance_experiment = np.empty(len(self.experiments), dtype=float)
         
         for exp in range(len(self.experiments)):
-            corr_trials = np.sum(performance[exp])
-            num_trials = self.experiments[exp].num_trials
-            self.performance_experiment[exp] = (corr_trials/num_trials)
 
-        return self.performance_experiment
+            num_trials = self.experiments[exp].num_trials
+            
+            if pre_switch:
+                switch_vector = (
+                    self.experiments[exp].get_rule_switch(switch_type))
+                switch_trials = np.nonzero(switch_vector)[0]
+                
+                if len(switch_trials) > 0:
+                    num_trials = switch_trials[0] # Get first switch, if several
+                    
+            performance = self.experiments[exp].get_performance()[0:num_trials]
+            performance_experiment[exp] = (np.sum(performance)/num_trials)
+
+        return performance_experiment
 
     def get_performance_trials(self):
         '''
+        Returns a single 1D numpy array indicating, for each trial of each
+        experiment (concatenated together), whether the mouse answered
+        correctly(1) or incorrectly(0), or failed to respond(0)
+
+        Returns:
+        --------
+        performance_trials: np.array, dtype = int
+            Indicates whether each trial is correct(1) or incorrect(0).
         '''
-        performance = self.get_performance()
+
+        performance = np.empty(len(self.experiments), dtype=np.ndarray)
+        
+        for exp in range(len(self.experiments)):
+            performance[exp] = self.experiments[exp].get_performance()
+            
         performance_trials = as_vector(performance)
         
         return performance_trials
     
     def get_reversal_vector(self):
         '''
+        Returns a 1D numpy array indicating, for each trial of each experiment,
+        whether a reversal was triggered(1) or not(0). Note that the reversal
+        trial is the one in which the reversal was triggered, so the rule only
+        changes on the subsequent trial.
+
+        Returns:
+        --------
+        reversal_vector: 1D np.array, dtype=int
+            With all trials from all experiments concatenated together,
+            is filled with 0 everywhere except trials in which a reversal
+            was triggered(1).
         '''
         
         reversal  = np.empty(len(self.experiments), dtype=np.ndarray)
@@ -329,6 +430,23 @@ class Mouse():
     
     def get_post_switch_trials(self, trial_vector, rule_switch_trials, n_trials):
         '''
+        Returns data from a given number of trials after a rule switch.
+
+        Arguments:
+        ----------
+        trial_vector: 1D numpy array
+            For each trial of each experiment, contains relevant information
+            to be returned (e.g. performance(1/0), choice(L/R/N)).
+        rule_switch_trials: 1D numpy array
+            Lists the trial numbers corresponding to rule switches.
+        n_trials: int
+            Indicates how many trials to return after the switch.
+
+        Returns:
+        --------
+        post_switch_trials: np.array, dtype=np.array
+            For each rule switch, contains data from trial_vector for 
+            n_trials after the rule switch.
         '''
         
         post_switch_trials = np.empty(len(rule_switch_trials), dtype=np.ndarray)
@@ -342,6 +460,20 @@ class Mouse():
     
     def get_post_reversal_performance(self, n_trials):
         '''
+        For each reversal, calculates the performance of the mouse for a given
+        number of subsequent trials. 
+        
+        Arguments:
+        ----------
+        n_trials: int
+            Indicates how many post-reversal trials to consider. 
+        
+        Returns:
+        --------
+        reversal_performance: np.array, dtype=np.array
+            For each reversal, contains performance of the mouse (1/0)
+            for (n_trials) subsequent trials.
+        
         '''
         performance_trials = self.get_performance_trials()
         reversal_vector = self.get_reversal_vector()
@@ -350,7 +482,52 @@ class Mouse():
             performance_trials, reversal_trials, n_trials)
 
         return reversal_performance
-   
+
+    def get_anticipatory_licking(self):
+        '''
+        For each experiment, calculates the fraction of trials with anticipatory
+        licking on the correct and incorrect port, and the mean anticipatory 
+        lick rate for correct and incorrect ports.
+
+        Returns:
+        --------
+        output_list, containing:
+        [0]corr_ant_lick_trials: np.array, dtype=float
+            For each experiment, stores the fraction of trials with anticipatory
+            licking on the correct port.
+        [1]incorr_ant_lick_trials: np.array, dtype=float
+            For each experiment, stores the fraction of trials with anticipatory
+            licking on the incorrect port.
+        [2]corr_ant_lick_rates: np.array, dtype=float
+            For each experiment, stores mean anticipatory
+            lick rate on the correct port.
+        [3]incorr_ant_lick_rates: np.array, dtype=float
+            For each experiment, stores mean anticipatory
+            lick rate on the incorrect port.
+        '''
+        corr_ant_lick_trials = np.empty(len(self.experiments), dtype=float)
+        incorr_ant_lick_trials = np.empty_like(corr_ant_lick_trials)
+        corr_ant_lick_rates = np.empty_like(corr_ant_lick_trials)
+        incorr_ant_lick_rates = np.empty_like(corr_ant_lick_trials)
+
+        for exp in range(len(self.experiments)):
+            ant_lick_exp = self.experiments[exp].get_anticipatory_licking()
+            corr_ant_lick_trials[exp] = (
+                np.nansum(ant_lick_exp[0])
+                /self.experiments[exp].num_trials)
+            incorr_ant_lick_trials[exp] = (
+                np.nansum(ant_lick_exp[1])
+                /self.experiments[exp].num_trials)
+            corr_ant_lick_rates[exp] = np.nanmean(ant_lick_exp[2])
+            incorr_ant_lick_rates[exp] = np.nanmean(ant_lick_exp[3])
+
+        output_list =  [corr_ant_lick_trials,
+                        incorr_ant_lick_trials,
+                        corr_ant_lick_rates,
+                        incorr_ant_lick_rates]
+
+        return output_list
+
    
 class DataSet():
     '''
@@ -377,6 +554,9 @@ class DataSet():
     self.get_performance_experiment():
         Returns the fraction of correct trials for each experiment for 
         each mouse in the dataset.
+    self.get_post_reversal_performance:
+        For each reversal for each mouse, returns a nested vectors for 
+        performance for a given number of trials post-reversal.
     '''
     
     
@@ -390,6 +570,14 @@ class DataSet():
 
     def get_mice(self):
         '''
+        Guides the user through a mouse selection process; either choosing
+        a specific mouse from the dataset or choosing all mice.
+        
+        Returns:
+        --------
+        mouse_list: list(str)
+            Contains the ID numbers of either the selected mouse, or all 
+            mice in the dataset.
         '''
 
         mouse_list = [i for i in list(self.dataset.keys())
@@ -418,6 +606,18 @@ class DataSet():
 
     def get_mouse_objects(self, mouse_list):
         '''
+        For each mouse in mouse_list, instantiates an object of class
+        Mouse. 
+        
+        Arguments:
+        ----------
+        mouse_list: list(str)
+            A list containing the ID numbers of each relevant mouse.
+
+        Returns:
+        mouse_objects: list(Mouse objects)
+            A list containing an instance of class Mouse for each mouse
+            in mouse_list
         '''
 
         mouse_objects = []
@@ -429,28 +629,71 @@ class DataSet():
 
     def get_weights(self):
         '''
+        For each mouse, gets the recorded weight (in grams) for each experiment
+        day in the dataset. Note that these weight curves only include dates on
+        which a behavior experiment was run.
+
+        Returns:
+        --------
+        weights: np.array, dtype=np.array
+            Nested arrays containing, for each mouse, the recorded weight
+            (in grams, float) recorded on each experiment day corresponding
+            to that mouse.
         '''
-        self.weights = np.empty(len(self.mouse_objects), dtype=np.ndarray)
+        weights = np.empty(len(self.mouse_objects), dtype=np.ndarray)
 
         for mouse in range(len(self.mouse_objects)):
-            self.weights[mouse] = self.mouse_objects[mouse].get_weights()
+            weights[mouse] = self.mouse_objects[mouse].get_weights()
 
-        return self.weights
+        return weights
 
-    def get_performance_experiment(self):
+    def get_performance_experiment(self, pre_switch, switch_type='r'):
         '''
+        For each mouse, gets the fraction of correctly answered trials on
+        each experiment day corresponding to that mouse.
+
+        Arguments:
+        ----------
+        pre_switch: bool
+            Indicates whether trials after a rule switch should be
+            ignored(True) or not(False)
+        switch_type: str, default = 'r'
+            If pre_switch is True, indicates whether to look for a
+            reversal(r; relevant dimension is constant) or a set shift
+            (s; relevant dimension changes).
+        
+        Returns:
+        --------
+        performance_experiment: np.array, dtype=np.array
+            Stores the fraction of correct trials (float) for each mouse on
+            each experiment day.
         '''
-        self.performance_experiment = np.empty(
+        performance_experiment = np.empty(
             len(self.mouse_objects), dtype=np.ndarray)
 
         for mouse in range(len(self.mouse_objects)):
-            self.performance_experiment[mouse] = (
-                self.mouse_objects[mouse].get_performance_experiment())
+            performance_experiment[mouse] = (
+                self.mouse_objects[mouse].get_performance_experiment(
+                    pre_switch=pre_switch, switch_type=switch_type))
 
-        return self.performance_experiment
+        return performance_experiment
 
     def get_post_reversal_performance(self, n_trials):
         '''
+        For each mouse, for each reversal, returns the performance of the mouse
+        on a given number of trials after a reversal.
+
+        Arguments:
+        ----------
+        n_trials: int
+            Specifies how many post-reversal trials to consider.
+        
+        Returns:
+        --------
+        reversal_performance: np.array, dtype=np.array
+            Nested 1D numpy arrays indicating, for each mouse, for each
+            reversal, for each trial, whether the mouse answered correctly(1)
+            or incorrectly(0), or failed to respond(0).
         '''
         reversal_performance = np.empty(len(self.mouse_list), dtype=np.ndarray)
 
@@ -460,6 +703,47 @@ class DataSet():
 
         return reversal_performance
 
+    def get_anticipatory_licking(self):
+        '''
+        For each mouse, gets the fraction of trials with anticipatory licking
+        on the correct and incorrect ports, and the mean anticipatory lick rate
+        on the correct and incorrect ports for each associated experiment. 
+
+        Returns:
+        --------
+        output_list, containing:
+        [0]corr_ant_lick_trials: np.array, dtype=np.array
+            For each mouse, stores the fraction of trials with anticipatory
+            licking on the correct port for each experiment.
+        [1]incorr_ant_lick_trials: np.array, dtype=np.array
+            For each mouse, stores the fraction of trials with anticipatory
+            licking on the incorrect port for each experiment.
+        [2]corr_ant_lick_rates: np.array, dtype=np.array
+            For each mouse, stores the mean anticipatory lick rate on the 
+            correct port for each experiment.
+        [3]incorr_ant_lick_rates: np.array, dtype=np.array
+            For each mouse, stores the mean anticipatory lick rate on the 
+            incorrect port for each experiment.
+        '''
+        corr_ant_lick_trials = np.empty(len(self.mouse_list), dtype=np.ndarray)
+        incorr_ant_lick_trials = np.empty_like(corr_ant_lick_trials)
+        corr_ant_lick_rates = np.empty_like(corr_ant_lick_trials)
+        incorr_ant_lick_rates = np.empty_like(corr_ant_lick_trials)
+
+        for mouse in range(len(self.mouse_list)):
+            ant_lick_mouse = self.mouse_objects[mouse].get_anticipatory_licking()
+
+            corr_ant_lick_trials[mouse] = ant_lick_mouse[0]
+            incorr_ant_lick_trials[mouse] = ant_lick_mouse[1]
+            corr_ant_lick_rates[mouse] = ant_lick_mouse[2]
+            incorr_ant_lick_rates[mouse] = ant_lick_mouse[3]
+
+        output_list = [corr_ant_lick_trials,
+                  incorr_ant_lick_trials,
+                  corr_ant_lick_rates,
+                  incorr_ant_lick_rates]
+
+        return output_list
     
 def as_array(nested_vectors):
     '''
@@ -513,6 +797,17 @@ def as_vector(nested_vectors):
 
 def dataset_search():
     '''
+    Gets the user to choose one of many dataset files in dataset_repo_path.
+    Once these datasets are chosen, a corresponding DataSet object is 
+    instantiated and appended to a list.
+
+    Returns:
+    --------
+    datasets: list (DataSet objects)
+        A list containing a DataSet object for each selected dataset file.
+    dataset_names: list (str)
+        A list containing a user input name for each selected dataset.
+        To be used as label in figures.
     '''
 
     datasets = []
