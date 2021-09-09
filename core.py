@@ -580,6 +580,19 @@ class Mouse():
             null_responses[exp] = sum(null) / self.experiments[exp].num_trials
 
         return null_responses
+
+    def get_port_bias(self):
+        '''
+        '''
+        
+        port_bias = np.empty(len(self.experiments), dtype=float)
+
+        for exp in range(len(self.experiments)):
+            left_resp = ['L' in str(i) for i in self.experiments[exp].data['response']]
+            port_bias[exp] = sum(left_resp) / self.experiments[exp].num_trials
+
+        return port_bias
+        
    
 class DataSet():
     '''
@@ -820,6 +833,17 @@ class DataSet():
             null_responses[mouse] = self.mouse_objects[mouse].get_null_responses()
 
         return null_responses
+
+    def get_port_bias(self):
+        '''
+        '''
+
+        port_bias = np.empty(len(self.mouse_list), dtype=np.ndarray)
+
+        for mouse in range(len(self.mouse_list)):
+            port_bias[mouse] = self.mouse_objects[mouse].get_port_bias()
+
+        return port_bias
         
     
 def as_array(nested_vectors):
