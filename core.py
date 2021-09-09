@@ -238,7 +238,6 @@ class Experiment():
         
         return output_list
             
-
     def get_performance(self):
         '''
         Returns a 1D numpy array indicating, for each trial, whether the mouse
@@ -259,6 +258,35 @@ class Experiment():
                 performance[trial] = 1
 
         return performance
+
+    def get_response_latency(self):
+        '''
+        '''
+
+        resp_period = 2000
+        response_times = np.empty(self.num_trials, dtype=float)
+        # If no response, latency is set to length of response period
+        response_times.fill(np.nan) 
+        
+        for trial in range(self.num_trials):
+            tone_end = self.data['sample_tone']['end'][trial]
+            left_licks = self.get_lick_timestamps(
+                self.data['lick_l']['volt'][trial],
+                self.data['lick_l']['t'][trial])
+            right_licks = self.get_lick_timestamps(
+                self.data['lick_r']['volt'][trial],
+                self.data['lick_r']['t'][trial])
+            
+            all_licks = np.append(left_licks,right_licks)
+            response_licks = all_licks[
+                (all_licks > tone_end)
+                &(all_licks < tone_end+resp_period)]
+
+            if len(response_licks) > 0:
+                response_times[trial] = np.amin(response_licks) - tone_end
+            
+            
+        return response_times
 
                 
 class Mouse():
@@ -297,8 +325,8 @@ class Mouse():
         self.mouse_number = mouse_number
         self.mouse_group = mouse_group
 
-        date_list = list(self.mouse_group.keys())
-        self.experiments = self.get_experiments(date_list)
+        self.date_list = list(self.mouse_group.keys())
+        self.experiments = self.get_experiments(self.date_list)
 
     def get_experiments(self, date_list):
         '''
@@ -313,7 +341,7 @@ class Mouse():
         '''
         experiments = []
 
-        for date in date_list:
+        for date in self.date_list:
             block_list = self.mouse_group[date]['blocks']
 
             for block in block_list:
@@ -528,6 +556,18 @@ class Mouse():
 
         return output_list
 
+    def get_response_latency(self):
+        '''
+        '''
+
+        response_times = np.empty(len(self.experiments), dtype=float)
+
+        for exp in range(len(self.experiments)):
+            print(f'Date {self.experiments[exp].date}')
+            response_times[exp] = np.nanmean(
+                self.experiments[exp].get_response_latency())
+
+        return response_times
    
 class DataSet():
     '''
@@ -744,6 +784,20 @@ class DataSet():
                   incorr_ant_lick_rates]
 
         return output_list
+
+    def get_response_latency(self):
+        '''
+        '''
+
+        response_times = np.empty(len(self.mouse_list), dtype=np.ndarray)
+
+        for mouse in range(len(self.mouse_list)):
+            print(f'Mouse {self.mouse_list[mouse]}')
+            response_times[mouse] = (
+                self.mouse_objects[mouse].get_response_latency())
+
+        return response_times
+        
     
 def as_array(nested_vectors):
     '''
