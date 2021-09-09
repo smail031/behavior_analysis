@@ -266,7 +266,7 @@ class Experiment():
         resp_period = 2000
         response_times = np.empty(self.num_trials, dtype=float)
         # If no response, latency is set to length of response period
-        response_times.fill(np.nan) 
+        response_times.fill(resp_period) 
         
         for trial in range(self.num_trials):
             tone_end = self.data['sample_tone']['end'][trial]
