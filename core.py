@@ -568,6 +568,18 @@ class Mouse():
                 self.experiments[exp].get_response_latency())
 
         return response_times
+
+    def get_null_responses(self):
+        '''
+        '''
+
+        null_responses = np.empty(len(self.experiments), dtype=float)
+
+        for exp in range(len(self.experiments)):
+            null = ['N' in str(i) for i in self.experiments[exp].data['response']]
+            null_responses[exp] = sum(null) / self.experiments[exp].num_trials
+
+        return null_responses
    
 class DataSet():
     '''
@@ -797,6 +809,17 @@ class DataSet():
                 self.mouse_objects[mouse].get_response_latency())
 
         return response_times
+
+    def get_null_responses(self):
+        '''
+        '''
+
+        null_responses = np.empty(len(self.mouse_list), dtype=np.ndarray)
+
+        for mouse in range(len(self.mouse_list)):
+            null_responses[mouse] = self.mouse_objects[mouse].get_null_responses()
+
+        return null_responses
         
     
 def as_array(nested_vectors):
