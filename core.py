@@ -29,7 +29,7 @@ class Experiment():
     get_weight():
         Gets the weight of the mouse recorded on that day from the 
         attributes in self.data.
-    get_rule_switch(switch_type):
+    get_rule_switch():
         Indicates trials in which there was a rule switch. Will look for either
         a reversal or a set shift.
     get_lick_timestamps(lickport_voltage, lickport_timestamps):
@@ -43,7 +43,7 @@ class Experiment():
     '''
 
     
-    def __init__(self, mouse, date, block):
+    def __init__(self, mouse, date, block, exp_type):
         '''
         Arguments:
         ----------
@@ -58,6 +58,7 @@ class Experiment():
         self.mouse = mouse
         self.date = date
         self.block = block
+        self.exp_type = exp_type
 
         data_path = (f'{self.mouse}/{self.date}/'
             f'ms{self.mouse}_{self.date}_block{self.block}.hdf5')
@@ -83,7 +84,7 @@ class Experiment():
         return weight
     
 
-    def get_rule_switch(self, switch_type):
+    def get_rule_switch(self):
         '''
         Find trials in which there was a reversal or a set shift. A reversal
         (in reversal learning paradigms) leads to a change in port assignment
@@ -93,12 +94,6 @@ class Experiment():
         rule), which is stored in rule/freq_rule. The method can handle
         experiments with multiple rule switches, but this should never occurr.
 
-        Arguments:
-        ----------
-        switch_type: str
-            Indicates whether the method should look for a reversal ('r') or
-            a set shift ('s').
-
         Returns:
         --------
         rule_switch: 1D numpy array
@@ -106,10 +101,10 @@ class Experiment():
             or not(0).
         '''
 
-        if switch_type == 'r':       
+        if self.exp_type == 'r':       
             rule_switch = np.diff(self.data['rule']['left_port'])
 
-        elif switch_type == 's':
+        elif self.exp_type == 's':
             rule_switch = np.diff(self.data['rule']['freq_rule'])
             
         rule_switch = np.append(rule_switch, 0)
@@ -319,14 +314,16 @@ class Mouse():
     '''
 
     
-    def __init__(self, mouse_number, mouse_group):
+    def __init__(self, mouse_number, mouse_group, exp_type):
         '''
         '''
         self.mouse_number = mouse_number
         self.mouse_group = mouse_group
+        self.exp_type = exp_type
 
         self.date_list = list(self.mouse_group.keys())
         self.experiments = self.get_experiments(self.date_list)
+        self.initial_experiments = self.get_initial_experiments()
 
     def get_experiments(self, date_list):
         '''
@@ -348,8 +345,28 @@ class Mouse():
                 block_number = block.decode('utf-8')
 
                 experiments.append(Experiment(
-                    self.mouse_number, date, block_number))
+                    self.mouse_number, date, block_number, self.exp_type))
         return experiments
+
+    def get_initial_experiments(self):
+        '''
+        '''
+
+        rule_switch_experiments = np.empty(len(self.experiments), dtype=int)
+
+        for exp in range(len(self.experiments)):
+            rule_switch_experiments[exp] =np.sum(
+                self.experiments[exp].get_rule_switch())
+
+        switch_experiments = np.nonzero(rule_switch_experiments)[0]
+
+        if len(switch_experiments) > 0:
+            initial_experiments = self.experiments[0:switch_experiments[0]]
+
+        else: # In case there are no switches, all experiments are taken.
+            initial_experiments = self.experiments
+
+        return initial_experiments
 
     def get_weights(self):
         '''
@@ -368,7 +385,7 @@ class Mouse():
 
         return weights
 
-    def get_performance_experiment(self, pre_switch=False, switch_type='r'):
+    def get_performance_experiment(self, pre_switch=False):
         '''
         Returns a 1D array containing, for each experiment for this mouse, the
         fraction of correctly answered trials. Can ignore trials after either a
@@ -379,11 +396,6 @@ class Mouse():
         pre_switch: bool, default = False
             Indicates whether trials after a rule switch (reversal or set shift)
             should be ignored (True) or not (False).
-        switch_type: str, default = 'r'
-            If pre_switch is True, indicates whether to look for a 
-            reversal(r; relevant dimension stays the same) or a set shift
-            (s; relevant dimension changes). This argument is passed to
-            Experiment.get_rule_switch.
 
         Returns:
         --------
@@ -400,7 +412,7 @@ class Mouse():
             
             if pre_switch:
                 switch_vector = (
-                    self.experiments[exp].get_rule_switch(switch_type))
+                    self.experiments[exp].get_rule_switch())
                 switch_trials = np.nonzero(switch_vector)[0]
                 
                 if len(switch_trials) > 0:
@@ -450,7 +462,7 @@ class Mouse():
         reversal  = np.empty(len(self.experiments), dtype=np.ndarray)
         
         for exp in range(len(self.experiments)):
-            reversal[exp] = self.experiments[exp].get_rule_switch('r')
+            reversal[exp] = self.experiments[exp].get_rule_switch()
             
         reversal_vector = as_vector(reversal)
         
@@ -556,40 +568,58 @@ class Mouse():
 
         return output_list
 
-    def get_response_latency(self):
+    def get_response_latency(self, initial_learning=True):
         '''
         '''
 
-        response_times = np.empty(len(self.experiments), dtype=float)
+        if initial_learning:
+            experiments = self.initial_experiments
 
-        for exp in range(len(self.experiments)):
-            print(f'Date {self.experiments[exp].date}')
+        else:
+            experiments = self.experiments
+
+        response_times = np.empty(len(experiments), dtype=float)
+
+        for exp in range(len(experiments)):
+            print(f'Date {experiments[exp].date}')
             response_times[exp] = np.nanmean(
-                self.experiments[exp].get_response_latency())
+                experiments[exp].get_response_latency())
 
         return response_times
 
-    def get_null_responses(self):
+    def get_null_responses(self, initial_learning=True):
         '''
         '''
 
-        null_responses = np.empty(len(self.experiments), dtype=float)
+        if initial_learning:
+            experiments = self.initial_experiments
 
-        for exp in range(len(self.experiments)):
-            null = ['N' in str(i) for i in self.experiments[exp].data['response']]
-            null_responses[exp] = sum(null) / self.experiments[exp].num_trials
+        else:
+            experiments = self.experiments
+
+        null_responses = np.empty(len(experiments), dtype=float)
+
+        for exp in range(len(experiments)):
+            null = ['N' in str(i) for i in experiments[exp].data['response']]
+            null_responses[exp] = sum(null) / experiments[exp].num_trials
 
         return null_responses
 
-    def get_port_bias(self):
+    def get_port_bias(self, initial_learning=True):
         '''
         '''
-        
-        port_bias = np.empty(len(self.experiments), dtype=float)
 
-        for exp in range(len(self.experiments)):
-            left_resp = ['L' in str(i) for i in self.experiments[exp].data['response']]
-            port_bias[exp] = sum(left_resp) / self.experiments[exp].num_trials
+        if initial_learning:
+            experiments = self.initial_experiments
+
+        else:
+            experiments = self.experiments
+        
+        port_bias = np.empty(len(experiments), dtype=float)
+
+        for exp in range(len(experiments)):
+            left_resp = ['L' in str(i) for i in experiments[exp].data['response']]
+            port_bias[exp] = sum(left_resp) / experiments[exp].num_trials
 
         return port_bias
         
@@ -625,13 +655,15 @@ class DataSet():
     '''
     
     
-    def __init__(self, filename):
+    def __init__(self, filename, exp_type):
         '''
         '''
         print(f'Opening {filename}.hdf5')
         self.dataset = h5py.File(f'{dataset_repo_path}{filename}.hdf5','r')
+        self.exp_type = exp_type
         self.mouse_list = self.get_mice()
         self.mouse_objects = self.get_mouse_objects(self.mouse_list)
+
 
     def get_mice(self):
         '''
@@ -688,7 +720,7 @@ class DataSet():
         mouse_objects = []
         for mouse in mouse_list:
             mouse_group = self.dataset[mouse]
-            mouse_objects.append(Mouse(mouse, mouse_group))
+            mouse_objects.append(Mouse(mouse, mouse_group, self.exp_type))
 
         return mouse_objects
 
@@ -712,7 +744,7 @@ class DataSet():
 
         return weights
 
-    def get_performance_experiment(self, pre_switch, switch_type='r'):
+    def get_performance_experiment(self, pre_switch):
         '''
         For each mouse, gets the fraction of correctly answered trials on
         each experiment day corresponding to that mouse.
@@ -722,10 +754,6 @@ class DataSet():
         pre_switch: bool
             Indicates whether trials after a rule switch should be
             ignored(True) or not(False)
-        switch_type: str, default = 'r'
-            If pre_switch is True, indicates whether to look for a
-            reversal(r; relevant dimension is constant) or a set shift
-            (s; relevant dimension changes).
         
         Returns:
         --------
@@ -739,7 +767,7 @@ class DataSet():
         for mouse in range(len(self.mouse_objects)):
             performance_experiment[mouse] = (
                 self.mouse_objects[mouse].get_performance_experiment(
-                    pre_switch=pre_switch, switch_type=switch_type))
+                    pre_switch=pre_switch))
 
         return performance_experiment
 
@@ -920,8 +948,11 @@ def dataset_search():
         if fname == 'ls':  
             print(sorted(os.listdir(dataset_repo_path)))
             
-        elif f'{fname}.hdf5' in os.listdir(dataset_repo_path):   
-            datasets.append(DataSet(fname))
+        elif f'{fname}.hdf5' in os.listdir(dataset_repo_path):
+
+            exp_type = input('What kind of experiment?'
+                             '(r:reversal learning, s:set shifting): ')
+            datasets.append(DataSet(fname, exp_type))
             dataset_names.append(input('Enter label for this dataset: '))
             
             if input('Add another dataset?(y/n): ') == 'n':
