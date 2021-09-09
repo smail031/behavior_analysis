@@ -838,7 +838,7 @@ class DataSet():
 
         return output_list
 
-    def get_response_latency(self):
+    def get_response_latency(self, initial_learning=True):
         '''
         '''
 
@@ -847,29 +847,33 @@ class DataSet():
         for mouse in range(len(self.mouse_list)):
             print(f'Mouse {self.mouse_list[mouse]}')
             response_times[mouse] = (
-                self.mouse_objects[mouse].get_response_latency())
+                self.mouse_objects[mouse].get_response_latency(
+                    initial_learning=initial_learning))
 
         return response_times
 
-    def get_null_responses(self):
+    def get_null_responses(self, initial_learning=True):
         '''
         '''
 
         null_responses = np.empty(len(self.mouse_list), dtype=np.ndarray)
 
         for mouse in range(len(self.mouse_list)):
-            null_responses[mouse] = self.mouse_objects[mouse].get_null_responses()
+            null_responses[mouse] = (
+                self.mouse_objects[mouse].get_null_responses(
+                    initial_learning=initial_learning))
 
         return null_responses
 
-    def get_port_bias(self):
+    def get_port_bias(self, initial_learning=True):
         '''
         '''
 
         port_bias = np.empty(len(self.mouse_list), dtype=np.ndarray)
 
         for mouse in range(len(self.mouse_list)):
-            port_bias[mouse] = self.mouse_objects[mouse].get_port_bias()
+            port_bias[mouse] = (self.mouse_objects[mouse].get_port_bias(
+                initial_learning=initial_learning))
 
         return port_bias
         
