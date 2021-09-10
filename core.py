@@ -624,8 +624,19 @@ class Mouse():
         port_bias = np.empty(len(experiments), dtype=float)
 
         for exp in range(len(experiments)):
-            left_resp = ['L' in str(i) for i in experiments[exp].data['response']]
-            port_bias[exp] = sum(left_resp) / experiments[exp].num_trials
+            left_resp = sum(
+                ['L' in str(i) for i in experiments[exp].data['response']])
+            null_resp = sum(
+                ['N' in str(i) for i in experiments[exp].data['response']])
+
+            if null_resp == experiments[exp].num_trials:
+                # If all responses are null, port bias is set to nan
+                port_bias[exp] = np.nan
+
+            else:
+                left_fraction = (left_resp
+                                 / (experiments[exp].num_trials - null_resp))
+                port_bias[exp] = abs(0.5 - left_fraction)
 
         return port_bias
         
