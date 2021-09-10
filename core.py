@@ -385,7 +385,8 @@ class Mouse():
 
         return weights
 
-    def get_performance_experiment(self, pre_switch=False):
+    def get_performance_experiment(
+            self, pre_switch=False, initial_learning=False):
         '''
         Returns a 1D array containing, for each experiment for this mouse, the
         fraction of correctly answered trials. Can ignore trials after either a
@@ -401,24 +402,29 @@ class Mouse():
         --------
         performance_experiment: np.array, dtype=float
             Indicates the fraction of correct trials for each experiment.
-        
         '''
 
-        performance_experiment = np.empty(len(self.experiments), dtype=float)
-        
-        for exp in range(len(self.experiments)):
+        if initial_learning:
+            experiments = self.initial_experiments
 
-            num_trials = self.experiments[exp].num_trials
+        else:
+            experiments = self.experiments
+            
+        performance_experiment = np.empty(len(experiments), dtype=float)
+        
+        for exp in range(len(experiments)):
+
+            num_trials = experiments[exp].num_trials
             
             if pre_switch:
                 switch_vector = (
-                    self.experiments[exp].get_rule_switch())
+                    experiments[exp].get_rule_switch())
                 switch_trials = np.nonzero(switch_vector)[0]
                 
                 if len(switch_trials) > 0:
                     num_trials = switch_trials[0] # Get first switch, if several
                     
-            performance = self.experiments[exp].get_performance()[0:num_trials]
+            performance = experiments[exp].get_performance()[0:num_trials]
             performance_experiment[exp] = (np.sum(performance)/num_trials)
 
         return performance_experiment
@@ -744,7 +750,7 @@ class DataSet():
 
         return weights
 
-    def get_performance_experiment(self, pre_switch):
+    def get_performance_experiment(self, pre_switch, initial_learning=False):
         '''
         For each mouse, gets the fraction of correctly answered trials on
         each experiment day corresponding to that mouse.
@@ -767,7 +773,7 @@ class DataSet():
         for mouse in range(len(self.mouse_objects)):
             performance_experiment[mouse] = (
                 self.mouse_objects[mouse].get_performance_experiment(
-                    pre_switch=pre_switch))
+                    pre_switch=pre_switch, initial_learning=initial_learning))
 
         return performance_experiment
 
@@ -876,6 +882,22 @@ class DataSet():
                 initial_learning=initial_learning))
 
         return port_bias
+
+    def trials_to_criterion(self):
+        '''
+        '''
+
+        num_trials_crit = []
+
+        for mouse in range(len(self.mouse_list)):
+            switch_vector = self.mouse_objects[mouse].get_reversal_vector()
+            switch_trials = np.nonzero(switch_vector)[0]
+
+            if len(switch_trials) > 0:
+                num_trials_crit.append(switch_trials[0])
+
+        print(num_trials_crit)
+        return num_trials_crit
         
     
 def as_array(nested_vectors):
@@ -945,6 +967,8 @@ def dataset_search():
 
     datasets = []
     dataset_names = []
+    exp_type = input('What kind of experiment?'
+                     '(r:reversal learning, s:set shifting): ')
     file_search = True
     while file_search == True:   
         fname = input('Enter dataset name (ls:list): ')
@@ -953,9 +977,6 @@ def dataset_search():
             print(sorted(os.listdir(dataset_repo_path)))
             
         elif f'{fname}.hdf5' in os.listdir(dataset_repo_path):
-
-            exp_type = input('What kind of experiment?'
-                             '(r:reversal learning, s:set shifting): ')
             datasets.append(DataSet(fname, exp_type))
             dataset_names.append(input('Enter label for this dataset: '))
             
