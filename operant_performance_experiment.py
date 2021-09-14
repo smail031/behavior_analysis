@@ -24,7 +24,7 @@ for dset in range(len(datasets)):
     population_array = core.as_array(performance)
     population_mean = np.nanmean(population_array, axis=0)
     population_sem = stats.sem(population_array, axis=0, nan_policy='omit')
-    x_axis = np.linspace(0, len(population_mean), len(population_mean))
+    x_axis = np.linspace(0, len(population_mean)-1, len(population_mean))
     # Plot population mean
     ax.plot(population_mean,
             color=colors[dset], lw=2,
@@ -38,7 +38,7 @@ for dset in range(len(datasets)):
 ax.spines['top'].set_visible(False) # Remove top and right parts of box
 ax.spines['right'].set_visible(False)
 #ax.set_ylim(0,2000) # Set Y axis limit
-ax.set_xlim(0,1)
+ax.set_xlim(0,None)
 ax.set_xlabel('Training Day') # Set Y axis label
 ax.set_ylabel('Fraction Correct Trials') # Set X axis label
 ax.legend() # Generate the legend (labels are specified in ax.plot)

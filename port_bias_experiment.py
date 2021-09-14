@@ -23,7 +23,7 @@ for dset in range(len(datasets)): # Iterate through all the datasets
     population_array = core.as_array(port_bias)
     population_mean = np.nanmean(population_array, axis=0)
     population_sem = stats.sem(population_array, axis=0, nan_policy='omit')
-    x_axis = np.linspace(0, len(population_mean), len(population_mean))
+    x_axis = np.linspace(0, len(population_mean)-1, len(population_mean))
     # Plot population mean
     ax.plot(population_mean,
             color=colors[dset], lw=2,
