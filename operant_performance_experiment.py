@@ -9,6 +9,7 @@ fig, ax = plt.subplots(
     nrows=1, ncols=1, figsize = (8, 6), constrained_layout = True)
 
 datasets, dataset_names = core.dataset_search()
+colors = ['grey', 'red']
 
 for dset in range(len(datasets)):
 
