@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import core
+from scipy import stats
 
 plt.rcParams['pdf.fonttype'] = 42
 fig, ax = plt.subplots(
