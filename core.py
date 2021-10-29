@@ -386,7 +386,7 @@ class Mouse():
         return weights
 
     def get_performance_experiment(
-            self, pre_switch=False, initial_learning=False):
+            self, pre_switch=False, initial_learning=False, responded=False):
         '''
         Returns a 1D array containing, for each experiment for this mouse, the
         fraction of correctly answered trials. Can ignore trials after either a
@@ -405,6 +405,7 @@ class Mouse():
         '''
 
         if initial_learning:
+            # will take only experiments before 1st switch
             experiments = self.initial_experiments
 
         else:
@@ -425,9 +426,27 @@ class Mouse():
                     num_trials = switch_trials[0] # Get first switch, if several
                     
             performance = experiments[exp].get_performance()[0:num_trials]
-            performance_experiment[exp] = (np.sum(performance)/num_trials)
+
+            if responded:
+                # Will excluded trials with null response
+                null_trials = [
+                    'N' in str(i) for i in experiments[exp].data['response']]
+                performance_experiment[exp] = (
+                    np.sum(performance) / (num_trials-sum(null_trials)))
+                print(f'{np.sum(performance)} / {num_trials-sum(null_trials)} '
+                      f'= {performance_experiment[exp]}')
+
+            else:
+                performance_experiment[exp] = (
+                    np.sum(performance) / num_trials)
 
         return performance_experiment
+
+    def get_performance_freq(self):
+        '''
+        '''
+
+        
 
     def get_performance_trials(self):
         '''
@@ -672,7 +691,7 @@ class DataSet():
     '''
     
     
-    def __init__(self, filename, exp_type):
+    def __init__(self, filename, exp_type, min_exp=None):
         '''
         '''
         print(f'Opening {filename}.hdf5')
@@ -680,6 +699,9 @@ class DataSet():
         self.exp_type = exp_type
         self.mouse_list = self.get_mice()
         self.mouse_objects = self.get_mouse_objects(self.mouse_list)
+
+        if min_exp != None:
+            self.mouse_list, self.mouse_objects = self.remove_low_n(min_exp)
 
 
     def get_mice(self):
@@ -741,6 +763,23 @@ class DataSet():
 
         return mouse_objects
 
+    def remove_low_n(self, min_exp):
+        '''
+        # Removes mice that have less than a given number of training days from
+        # the analysis.
+        '''
+
+        new_mouse_list = []
+        new_mouse_objects = []
+        
+        for mouse in range(len(self.mouse_list)):
+            if len(self.mouse_objects[mouse].date_list) >= min_exp:
+                new_mouse_list.append(self.mouse_list[mouse])
+                new_mouse_objects.append(self.mouse_objects[mouse])
+
+        return new_mouse_list, new_mouse_objects
+                
+
     def get_weights(self):
         '''
         For each mouse, gets the recorded weight (in grams) for each experiment
@@ -761,7 +800,8 @@ class DataSet():
 
         return weights
 
-    def get_performance_experiment(self, pre_switch, initial_learning=False):
+    def get_performance_experiment(
+            self, pre_switch, initial_learning=False, responded=False):
         '''
         For each mouse, gets the fraction of correctly answered trials on
         each experiment day corresponding to that mouse.
@@ -771,6 +811,12 @@ class DataSet():
         pre_switch: bool
             Indicates whether trials after a rule switch should be
             ignored(True) or not(False)
+        initial_learning: bool, default = False
+            Indicates whether to only consider the initial learning phase,
+            i.e. between start of training and first rule switch.
+        responded: bool, default = False
+            If true, excludes trials with null responses from the performance
+            calculation (chance performance would be 0.5).
         
         Returns:
         --------
@@ -784,7 +830,9 @@ class DataSet():
         for mouse in range(len(self.mouse_objects)):
             performance_experiment[mouse] = (
                 self.mouse_objects[mouse].get_performance_experiment(
-                    pre_switch=pre_switch, initial_learning=initial_learning))
+                    pre_switch=pre_switch,
+                    initial_learning=initial_learning,
+                    responded=responded))
 
         return performance_experiment
 
@@ -909,7 +957,18 @@ class DataSet():
 
         print(num_trials_crit)
         return num_trials_crit
+
+    def get_switch_trials(self):
+        '''
+        '''
+
+        switch_trials = np.empty(len(self.mouse_list), dtype=np.ndarray)
         
+        for mouse in range(len(self.mouse_list)):
+            switch_vector = self.mouse_objects[mouse].get_reversal_vector()
+            switch_trials[mouse] = np.nonzero(switch_vector)[0]
+
+        return switch_trials
     
 def as_array(nested_vectors):
     '''
@@ -961,7 +1020,7 @@ def as_vector(nested_vectors):
 
     return output_vector
 
-def dataset_search():
+def dataset_search(min_exp=None):
     '''
     Gets the user to choose one of many dataset files in dataset_repo_path.
     Once these datasets are chosen, a corresponding DataSet object is 
@@ -988,7 +1047,7 @@ def dataset_search():
             print(sorted(os.listdir(dataset_repo_path)))
             
         elif f'{fname}.hdf5' in os.listdir(dataset_repo_path):
-            datasets.append(DataSet(fname, exp_type))
+            datasets.append(DataSet(fname, exp_type, min_exp=min_exp))
             dataset_names.append(input('Enter label for this dataset: '))
             
             if input('Add another dataset?(y/n): ') == 'n':
